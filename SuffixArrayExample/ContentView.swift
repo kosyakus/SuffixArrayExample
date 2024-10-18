@@ -15,6 +15,7 @@ struct ContentView: View {
     enum SortOrder: String, CaseIterable {
         case ascending = "ASC"
         case descending = "DESC"
+        case topTen = "Top 10"
     }
     
     var body: some View {
@@ -48,22 +49,42 @@ struct ContentView: View {
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
-            // Picker для выбора порядка сортировки
+            // Picker для переключения между сортировкой по возрастанию, убыванию и топ-10
             Picker("Sort Order", selection: $sortOrder) {
-                ForEach(SortOrder.allCases, id: \.self) { order in
-                    Text(order.rawValue).tag(order)
+                ForEach(SortOrder.allCases, id: \.self) { tab in
+                    Text(tab.rawValue).tag(tab)
                 }
             }
             .pickerStyle(SegmentedPickerStyle())
             .padding()
             
-            
-            List(sortedSuffixes(), id: \.key) { suffix, count in
-                HStack {
-                    Text("\(suffix)")
-                    Spacer()
-                    if count > 1 {
-                        Text("\(count)") // Показываем количество повторений
+            // Отображаем контент в зависимости от выбранной вкладки
+            if sortOrder == .ascending {
+                List(sortedSuffixesAsc(), id: \.key) { suffix, count in
+                    HStack {
+                        Text("\(suffix)")
+                        Spacer()
+                        if count > 1 {
+                            Text("\(count)")
+                        }
+                    }
+                }
+            } else if sortOrder == .descending {
+                List(sortedSuffixesDesc(), id: \.key) { suffix, count in
+                    HStack {
+                        Text("\(suffix)")
+                        Spacer()
+                        if count > 1 {
+                            Text("\(count)")
+                        }
+                    }
+                }
+            } else if sortOrder == .topTen {
+                List(topTenSuffixes(), id: \.key) { suffix, count in
+                    HStack {
+                        Text("\(suffix)")
+                        Spacer()
+                        Text("\(count)")
                     }
                 }
             }
@@ -71,14 +92,24 @@ struct ContentView: View {
         .padding()
     }
     
-    // Функция для сортировки суффиксов в зависимости от выбранного порядка
-    private func sortedSuffixes() -> [(key: String, value: Int)] {
-        switch sortOrder {
-        case .ascending:
-            return suffixMatches.sorted { $0.key < $1.key }
-        case .descending:
-            return suffixMatches.sorted { $0.key > $1.key }
-        }
+    // Функция для сортировки всех суффиксов по возрастанию (ASC)
+    private func sortedSuffixesAsc() -> [(key: String, value: Int)] {
+        return suffixMatches.sorted { $0.key < $1.key }
+    }
+    
+    // Функция для сортировки всех суффиксов по убыванию (DESC)
+    private func sortedSuffixesDesc() -> [(key: String, value: Int)] {
+        return suffixMatches.sorted { $0.key > $1.key }
+    }
+    
+    // Функция для получения топ-10 суффиксов по количеству
+    private func topTenSuffixes() -> [(key: String, value: Int)] {
+        return Array(
+            suffixMatches
+                .filter { $0.key.count == 3 } // Считаем только трёхбуквенные суффиксы
+                .sorted { $0.value > $1.value } // Сортируем по количеству нахождений (по убыванию)
+                .prefix(10) // Отбираем топ-10
+        )
     }
 }
 
