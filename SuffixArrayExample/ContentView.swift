@@ -12,6 +12,10 @@ struct ContentView: View {
     @State private var suffixMatches: [String: Int] = [:]
     @State private var sortOrder: SortOrder = .ascending
     
+    @StateObject private var viewModel = SuffixViewModel()
+    //    @State private var cancellable: AnyCancellable? = nil
+    //    @Published private var searchText: String = ""
+    
     enum SortOrder: String, CaseIterable {
         case ascending = "ASC"
         case descending = "DESC"
@@ -34,9 +38,11 @@ struct ContentView: View {
                         let suffixSequence = SuffixSequence(word: word)
                         
                         for suffix in suffixSequence {
+                            // Приводим суффикс к нижнему регистру
+                            let lowercasedSuffix = suffix.lowercased()
                             // Считаем только подстроки длиной >= 3 символа
-                            guard suffix.count >= 3 else { continue }
-                            allSuffixes[suffix, default: 0] += 1
+                            guard lowercasedSuffix.count >= 3 else { continue }
+                            allSuffixes[lowercasedSuffix, default: 0] += 1
                         }
                     }
                     
@@ -46,6 +52,11 @@ struct ContentView: View {
                     
                     
                 }
+                .padding()
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+            
+            // Поле поиска
+            TextField("Поиск", text: $viewModel.searchText)
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
@@ -60,7 +71,7 @@ struct ContentView: View {
             
             // Отображаем контент в зависимости от выбранной вкладки
             if sortOrder == .ascending {
-                List(sortedSuffixesAsc(), id: \.key) { suffix, count in
+                List(filteredSuffixes(sortedSuffixesAsc()), id: \.key) { suffix, count in
                     HStack {
                         Text("\(suffix)")
                         Spacer()
@@ -70,7 +81,7 @@ struct ContentView: View {
                     }
                 }
             } else if sortOrder == .descending {
-                List(sortedSuffixesDesc(), id: \.key) { suffix, count in
+                List(filteredSuffixes(sortedSuffixesDesc()), id: \.key) { suffix, count in
                     HStack {
                         Text("\(suffix)")
                         Spacer()
@@ -80,7 +91,7 @@ struct ContentView: View {
                     }
                 }
             } else if sortOrder == .topTen {
-                List(topTenSuffixes(), id: \.key) { suffix, count in
+                List(filteredSuffixes(topTenSuffixes()), id: \.key) { suffix, count in
                     HStack {
                         Text("\(suffix)")
                         Spacer()
@@ -90,6 +101,15 @@ struct ContentView: View {
             }
         }
         .padding()
+    }
+    
+    // Функция для фильтрации по поиску
+    private func filteredSuffixes(_ suffixes: [(key: String, value: Int)]) -> [(key: String, value: Int)] {
+        if viewModel.searchText.isEmpty {
+            return suffixes
+        } else {
+            return suffixes.filter { $0.key.lowercased().contains(viewModel.searchText.lowercased()) }
+        }
     }
     
     // Функция для сортировки всех суффиксов по возрастанию (ASC)
