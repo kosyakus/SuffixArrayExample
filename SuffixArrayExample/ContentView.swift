@@ -13,8 +13,6 @@ struct ContentView: View {
     @State private var sortOrder: SortOrder = .ascending
     
     @StateObject private var viewModel = SuffixViewModel()
-    //    @State private var cancellable: AnyCancellable? = nil
-    //    @Published private var searchText: String = ""
     
     enum SortOrder: String, CaseIterable {
         case ascending = "ASC"
@@ -23,6 +21,7 @@ struct ContentView: View {
     }
     
     var body: some View {
+        NavigationView {
         VStack {
             TextField("Введите текст", text: $inputText)
                 .onChange(of: inputText) { _, newValue in
@@ -59,6 +58,13 @@ struct ContentView: View {
             TextField("Поиск", text: $viewModel.searchText)
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .onSubmit {
+                    viewModel.addToHistory(viewModel.searchText) // Добавляем в историю при поиске
+                }
+            
+            // Навигация на экран истории поиска
+            NavigationLink("История поиска", destination: SearchHistoryView(history: viewModel.searchHistory))
+                .padding()
             
             // Picker для переключения между сортировкой по возрастанию, убыванию и топ-10
             Picker("Sort Order", selection: $sortOrder) {
@@ -68,6 +74,13 @@ struct ContentView: View {
             }
             .pickerStyle(SegmentedPickerStyle())
             .padding()
+            
+            // Отображение времени выполнения поиска
+            if let searchTime = viewModel.searchTime {
+                Text("Время выполнения поиска: \(String(format: "%.4f", searchTime)) секунд")
+                    .font(.caption)
+                    .padding(.bottom)
+            }
             
             // Отображаем контент в зависимости от выбранной вкладки
             if sortOrder == .ascending {
@@ -101,6 +114,8 @@ struct ContentView: View {
             }
         }
         .padding()
+        .navigationTitle("Поиск Суффиксов")
+    }
     }
     
     // Функция для фильтрации по поиску
