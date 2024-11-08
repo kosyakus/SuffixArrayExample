@@ -89,6 +89,21 @@ struct ContentView: View {
             }
             .cornerRadius(16)
             
+            if let summary = viewModel.summaryResult {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Сводка по поискам:")
+                        .font(.headline)
+                    Text("Всего поисков: \(summary.totalSearches)")
+                    Text("Среднее время: \(String(format: "%.4f", summary.averageTime)) сек")
+                    Text("Самое быстрое время: \(String(format: "%.4f", summary.fastestTime)) сек")
+                    Text("Самое медленное время: \(String(format: "%.4f", summary.slowestTime)) сек")
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+                .padding(.top)
+            }
+            
             // Отображаем контент в зависимости от выбранной вкладки
             if sortOrder == .ascending {
                 List(filteredSuffixes(sortedSuffixesAsc()), id: \.key) { suffix, count in

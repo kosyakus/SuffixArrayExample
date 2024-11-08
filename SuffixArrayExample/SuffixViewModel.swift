@@ -8,33 +8,6 @@
 import Combine
 import SwiftUI
 
-struct SearchResult: Identifiable {
-    let id = UUID()
-    let suffix: String
-    let searchTime: TimeInterval
-    var color: Color = .clear
-    
-    // Метод для вычисления цвета на основе времени выполнения
-    mutating func updateColor(minTime: TimeInterval, maxTime: TimeInterval) {
-        guard maxTime > minTime else {
-            self.color = .green
-            return
-        }
-        
-        // Нормализуем значение searchTime к диапазону от 0 до 1
-        let normalizedTime = (searchTime - minTime) / (maxTime - minTime)
-        
-        // Устанавливаем цвет в зависимости от нормализованного времени (от зеленого к красному)
-        let redComponent = normalizedTime
-        let greenComponent = 1 - normalizedTime
-        self.color = Color(
-            red: redComponent,
-            green: greenComponent,
-            blue: 0
-        )
-    }
-}
-
 class SuffixViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var searchHistory: [String] = [] // История поиска
@@ -44,11 +17,13 @@ class SuffixViewModel: ObservableObject {
     
     @Published var searchTime: TimeInterval? = nil // Время выполнения последнего поиска
     @Published var searchResults: [SearchResult] = [] // Массив для хранения результатов с временем выполнения
+    @Published var summaryResult: SummaryResult? // Результат для отображения Summary
     
     private let jobQueue = JobQueue()
     private let jobScheduler = JobScheduler()
     
     private var cancellables = Set<AnyCancellable>()
+    private var timerCancellable: AnyCancellable?
     
     init() {
         // Используем Combine для debounce
@@ -59,6 +34,9 @@ class SuffixViewModel: ObservableObject {
                 self?.performSearch(for: text)
             }
             .store(in: &cancellables)
+        
+        // Запуск задачи SummaryJob с интервалом
+        startSummaryJob()
     }
     
     func addToHistory(_ search: String) {
@@ -117,6 +95,40 @@ class SuffixViewModel: ObservableObject {
                 updatedResult.updateColor(minTime: minTime, maxTime: maxTime)
                 return updatedResult
             }
+        }
+    }
+    
+    // Запуск задачи SummaryJob с интервалом в 1-2 минуты
+    private func startSummaryJob() {
+        timerCancellable = Timer.publish(every: Double.random(in: 20...30), on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                Task {
+                    await self?.jobScheduler.addJob {
+                        await self?.calculateSummary()
+                    }
+                }
+            }
+    }
+    
+    // Расчет Summary по поискам
+    private func calculateSummary() async {
+        let totalSearches = searchResults.count
+        let totalTime = searchResults.reduce(0) { $0 + $1.searchTime }
+        let averageTime = totalSearches > 0 ? totalTime / Double(totalSearches) : 0
+        let fastestTime = searchResults.map { $0.searchTime }.min() ?? 0
+        let slowestTime = searchResults.map { $0.searchTime }.max() ?? 0
+        
+        let summary = SummaryResult(
+            totalSearches: totalSearches,
+            averageTime: averageTime,
+            fastestTime: fastestTime,
+            slowestTime: slowestTime
+        )
+        
+        await MainActor.run {
+            self.summaryResult = summary
+            print("Summary updated: \(summary)")
         }
     }
 }
