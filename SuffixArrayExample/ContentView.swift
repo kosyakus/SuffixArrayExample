@@ -60,6 +60,7 @@ struct ContentView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onSubmit {
                     viewModel.addToHistory(viewModel.searchText) // Добавляем в историю при поиске
+                    viewModel.performAsyncTask()
                 }
             
             // Навигация на экран истории поиска
@@ -75,12 +76,18 @@ struct ContentView: View {
             .pickerStyle(SegmentedPickerStyle())
             .padding()
             
-            // Отображение времени выполнения поиска
-            if let searchTime = viewModel.searchTime {
-                Text("Время выполнения поиска: \(String(format: "%.4f", searchTime)) секунд")
-                    .font(.caption)
-                    .padding(.bottom)
+            // Список для отображения результатов поиска с временем выполнения
+            List(viewModel.searchResults) { result in
+                VStack {
+                        Text("Суффикс: \(result.suffix)")
+                        Text("Время поиска: \(result.searchTime) секунд")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                }
+                .padding()
+                .background(result.color)
             }
+            .cornerRadius(16)
             
             // Отображаем контент в зависимости от выбранной вкладки
             if sortOrder == .ascending {
